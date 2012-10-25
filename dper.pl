@@ -56,7 +56,7 @@ sub main {
 
     pod2usage(2) unless ($input);
 
-    unless ($format eq "bind" or $format eq "nsd") {
+    unless ($format eq "bind" or $format eq "nsd" or $format eq "powerdns") {
         die "unknown format";
 	}
 
@@ -72,6 +72,7 @@ sub main {
     foreach my $p ($root->getElementsByTagName('peer')) {
        	generate_bind($p, $zonedir) if ($format eq "bind");
        	generate_nsd($p, $zonedir)  if ($format eq "nsd");
+	generate_powerdns($p, $zonedir)  if ($format eq "powerdns");
     }
 }
 
@@ -160,6 +161,41 @@ sub generate_nsd {
             printf("  request-xfr: %s\n", $x);
         }
         printf("\n");
+    }
+}
+
+sub generate_powerdns {
+    my $root    = shift;
+    my $zonedir = shift;
+
+    my @servers = ();
+    my @notify  = ();
+
+    # Single master server, for now.
+    my $master;
+
+    foreach my $m ($root->getElementsByTagName('primary')) {
+        my $tsig = $m->findvalue('@tsig');
+        my $addr = $m->textContent;
+
+        if ($tsig) {
+            push @servers, sprintf("%s key %s", $addr, $tsig);
+        } else {
+            push @servers, sprintf("%s", $addr);
+        }
+        push @notify, sprintf("%s", $addr);
+
+	$master = $addr;
+    }
+
+    foreach my $z ($root->getElementsByTagName('zone')) {
+        my $zone = $z->textContent;
+
+	# single master server, for now
+
+	printf("INSERT INTO domains (name, master, type) VALUES ('%s', '%s', 'SLAVE');\n",
+		$zone, $master);
+
     }
 }
 
