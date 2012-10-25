@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 #
-# $Id: dns-secondary.pl 13050 2012-10-25 08:30:06Z jakob $
-#
 # Copyright (c) 2008 Kirei AB. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -178,11 +176,11 @@ __END__
 
 =head1 NAME
 
-dns-secondary - Secondary DNS generator
+dper - DNS Peering Configuration Generator
 
 =head1 SYNOPSIS
 
-dns-secondary [options] filename
+dper [options] filename
 
 Options:
 
