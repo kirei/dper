@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- $Id: secondary.xml 9788 2010-12-07 09:13:56Z jakob $ -->
+
+<secondary>
+	<peer name="ns.schlyter.se">
+		<primary tsig="test.tsig.schlyter.se">195.47.254.10</primary>
+		<primary tsig="test.tsig.schlyter.se">2a02:760:1001:10::10</primary>
+	
+		<zone>schlyter.se</zone>
+		<zone>schlyter.net</zone>
+	</peer>
+
+	<peer name="ns.kirei.se">
+		<primary tsig="test.tsig.kirei.se">91.206.174.10</primary>
+	
+		<zone>kirei.se</zone>
+	</peer>
+</secondary>

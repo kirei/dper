@@ -1,0 +1,22 @@
+# $Id: secondary.rnc 9788 2010-12-07 09:13:56Z jakob $
+
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+start = element secondary {
+
+	# A peer defines a name server source, typically a logical node
+	element peer {
+		attribute name { xsd:string }?,
+
+		# Define master name severs
+		element primary {
+			# TSIG secret name (optional). Secret is transmitted OOB.
+			attribute tsig { xsd:string }?,
+
+			# IPv4/IPv6 address of primary name server
+			xsd:string
+		}*,
+		
+		element zone { xsd:string }*
+	}+
+}
