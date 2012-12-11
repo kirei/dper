@@ -115,7 +115,7 @@ sub generate_bind {
     }
 
     foreach my $z ($root->getElementsByTagName('zone')) {
-        my $zone = $z->textContent;
+        my $zone = lc($z->textContent);
 
         printf("zone \"%s\" {\n", $zone);
         printf("  type slave;\n");
@@ -167,7 +167,7 @@ sub zone2file {
     my $zonename = shift;
 
     $zonename =~ s,/,-,g;
-    return $zonename;
+    return lc($zonename);
 }
 
 main();
