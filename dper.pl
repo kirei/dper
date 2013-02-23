@@ -58,7 +58,7 @@ sub main {
 
     unless ($format eq "bind" or $format eq "nsd") {
         die "unknown format";
-	}
+    }
 
     my $parser = XML::LibXML->new();
     my $doc    = $parser->parse_file($input);
@@ -70,8 +70,8 @@ sub main {
     validate($root);
 
     foreach my $p ($root->getElementsByTagName('peer')) {
-       	generate_bind($p, $zonedir) if ($format eq "bind");
-       	generate_nsd($p, $zonedir)  if ($format eq "nsd");
+        generate_bind($p, $zonedir) if ($format eq "bind");
+        generate_nsd($p, $zonedir) if ($format eq "nsd");
     }
 }
 
