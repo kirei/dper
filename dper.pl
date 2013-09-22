@@ -122,7 +122,7 @@ sub generate_bind {
         printf("  file \"%s%s\";\n", $zonedir, zone2file($zone));
         printf("  masters { %s; };\n",      join("; ", @servers));
         printf("  allow-notify { %s; };\n", join("; ", @notify));
-        printf("  allow-transfer { none; }\n");
+        printf("  allow-transfer { none; };\n");
         printf("};\n");
         printf("\n");
     }
