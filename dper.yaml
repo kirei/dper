@@ -1,0 +1,18 @@
+---
+  
+cache_dir: cache
+
+output_format: nsd
+output_file: zones.conf
+
+#reconfigure_command: nsd-control reconfig
+
+peers:
+  peer1:
+    source: https://peer1.example.com/dper.xml
+    format: xml
+    cache: cache/peer1.xml
+  peer2:
+    source: https://peer2.example.com/dper.json
+    format: json
+    cache: cache/peer2.xml

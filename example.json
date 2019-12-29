@@ -1,0 +1,11 @@
+{
+	"masters": [
+		{
+			"ip": "10.0.0.1",
+			"tsig": "tsig.example.com."
+		}
+	],
+	"zones": [
+		"example.com."
+	]
+}
