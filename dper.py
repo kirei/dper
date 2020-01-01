@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """DPER Processor"""
 
 import argparse
@@ -35,6 +37,7 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Required('format'): vol.Any('xml', 'json'),
         }),
     }),
+    'reconfigure_command': str,
 })
 
 DYNAMIC_CONFIG_SCHEMA = vol.Schema({
