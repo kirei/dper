@@ -9,6 +9,8 @@ import json
 import logging
 import os
 import re
+import shlex
+import subprocess
 import stat
 import xml.etree.cElementTree as ET
 from contextlib import redirect_stdout
@@ -217,8 +219,6 @@ def main() -> None:
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
 
     with open(args.config) as config_file:
         config = yaml.safe_load(config_file)
@@ -240,8 +240,19 @@ def main() -> None:
     check_peers(peers)
     save_config(peers, config['output_file'], diff=config.get('output_diff', False))
 
-    if config.get('reconfigure_command'):
-        os.system(config.get('reconfigure_command'))
+    reconfigure = config.get('reconfigure_command')
+    
+    if reconfigure:
+        logging.info("reconfiguring using %s", reconfigure)
+        args = shlex.split(reconfigure)
+        res = subprocess.Popen(args, stdout=subprocess.PIPE)
+        if res.returncode:
+            logging.error("reconfigure_command returned non-zero")
+            log_func = logging.warning
+        else:
+            log_func = logging.info
+        for line in res.stdout:
+            log_func("reconfigure: %s", line.rstrip().decode())
 
 
 if __name__ == "__main__":
