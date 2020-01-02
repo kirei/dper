@@ -10,8 +10,8 @@ import logging
 import os
 import re
 import shlex
-import subprocess
 import stat
+import subprocess
 import xml.etree.cElementTree as ET
 from contextlib import redirect_stdout
 from dataclasses import dataclass
@@ -180,7 +180,7 @@ def process_dper(peer_id: str, source: str, cache: Optional[str], force_cache: b
         raise ValueError("Invalid format: " + payload_format)
 
 
-def save_config(peers: List[Peer], filename: str, output_format: str = 'nsd', diff: bool = False):
+def save_config(peers: List[Peer], filename: str, output_format: str = 'nsd', diff: bool = False) -> bool:
     config_output = io.StringIO()
     with redirect_stdout(config_output):
         if output_format == 'nsd':
@@ -191,10 +191,23 @@ def save_config(peers: List[Peer], filename: str, output_format: str = 'nsd', di
     os.write(output_file, config_output.getvalue().encode())
     os.close(output_file)
     os.chmod(output_path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-    if diff:
-        os.system(f"diff -u {filename} {output_path}")
+
+    args = ["diff", "-u", filename, output_path]
+    logging.debug("Running diff: %s", ' '.join(args))
+    res = subprocess.run(args, stdout=subprocess.PIPE, text=True)
+    logging.debug("diff returned %d", res.returncode)
+    if res.returncode == 0:
+        os.remove(output_path)
+        logging.info("No change")
+        return False
+
+    if res.stdout:
+        for line in res.stdout.splitlines():
+            logging.info("diff: %s", line.rstrip())
+
     os.rename(output_path, filename)
     logger.info("Wrote output to %s", filename)
+    return True
 
 
 def main() -> None:
@@ -238,21 +251,21 @@ def main() -> None:
                                   payload_format=peer_config['format']))
 
     check_peers(peers)
-    save_config(peers, config['output_file'], diff=config.get('output_diff', False))
+    changed = save_config(peers, config['output_file'], diff=config.get('output_diff', False))
 
     reconfigure = config.get('reconfigure_command')
-    
-    if reconfigure:
+    if changed and reconfigure:
         logging.info("reconfiguring using %s", reconfigure)
         args = shlex.split(reconfigure)
-        res = subprocess.Popen(args, stdout=subprocess.PIPE)
+        res = subprocess.run(args, stdout=subprocess.PIPE, text=True)
         if res.returncode:
             logging.error("reconfigure_command returned non-zero")
             log_func = logging.warning
         else:
             log_func = logging.info
-        for line in res.stdout:
-            log_func("reconfigure: %s", line.rstrip().decode())
+        if res.stdout:
+            for line in res.stdout.splitlines():
+                log_func("reconfigure: %s", line.rstrip())
 
 
 if __name__ == "__main__":
