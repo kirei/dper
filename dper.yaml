@@ -5,6 +5,8 @@ cache_dir: cache
 output_format: nsd
 output_file: zones.conf
 
+#zonefiles: True
+
 #reconfigure_command: nsd-control reconfig
 
 peers:

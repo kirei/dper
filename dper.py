@@ -47,19 +47,19 @@ import requests
 import voluptuous as vol
 import voluptuous.humanize
 import yaml
-from voluptuous.validators import DOMAIN_REGEX, FqdnUrl, IsDir
 
 IP_ADDRESS = ipaddress.ip_address
-DOMAIN_NAME = vol.Any(vol.Match(r'\w+'), vol.Match(DOMAIN_REGEX))
+DOMAIN_NAME = vol.Any(vol.Match(r'\w+'), vol.Match(vol.DOMAIN_REGEX))
 
 CONFIG_SCHEMA = vol.Schema({
     vol.Required('output_format'): vol.Any('nsd'),
     vol.Required('output_file'): str,
     'output_diff': bool,
-    'cache_dir': IsDir,
+    'cache_dir': vol.IsDir,
+    'zonefiles': bool,
     vol.Required('peers'): vol.Schema({
         str: vol.Schema({
-            vol.Required('source'): FqdnUrl,
+            vol.Required('source'): vol.FqdnUrl,
             vol.Required('format'): vol.Any('xml', 'json'),
         }),
     }),
@@ -147,13 +147,14 @@ def zone2file(zone: str) -> str:
     return re.sub(r'/', '-', zone.lower())
 
 
-def generate_nsd(peers: List[Peer]):
+def generate_nsd(peers: List[Peer], use_zonefiles: bool = False):
     for peer in peers:
         for z in peer.zones:
             print(f"# {peer.id}")
             print("zone:")
             print(f"  name: {z}")
-            print(f"  zonefile: {zone2file(z)}")
+            if use_zonefiles:
+                print(f"  zonefile: {zone2file(z)}")
             for m in peer.masters:
                 print(f"  allow-notify: {m.ip} {m.tsig}")
                 print(f"  allow-notify: {m.ip} NOKEY")
@@ -204,11 +205,16 @@ def process_dper(peer_id: str, source: str, cache: Optional[str], force_cache: b
         raise ValueError("Invalid format: " + payload_format)
 
 
-def save_config(peers: List[Peer], filename: str, output_format: str = 'nsd', diff: bool = False) -> bool:
+def save_config(peers: List[Peer],
+                filename: str,
+                output_format: str = 'nsd',
+                use_zonefiles: bool = False,
+                force_output: bool = False,
+                diff: bool = False) -> bool:
     config_output = io.StringIO()
     with redirect_stdout(config_output):
         if output_format == 'nsd':
-            generate_nsd(peers)
+            generate_nsd(peers, use_zonefiles)
         else:
             raise ValueError("Invalid output format")
     output_file, output_path = mkstemp(prefix='conf.', suffix='.tmp', dir='.')
@@ -220,7 +226,7 @@ def save_config(peers: List[Peer], filename: str, output_format: str = 'nsd', di
     logging.debug("Running diff: %s", ' '.join(args))
     res = subprocess.run(args, stdout=subprocess.PIPE, text=True)
     logging.debug("diff returned %d", res.returncode)
-    if res.returncode == 0:
+    if res.returncode == 0 and not force_output:
         os.remove(output_path)
         logging.info("No change")
         return False
@@ -247,6 +253,10 @@ def main() -> None:
                         dest='offline',
                         action='store_true',
                         help="Offline (force cache)")
+    parser.add_argument('--force',
+                        dest='force',
+                        action='store_true',
+                        help="Force update")
     parser.add_argument('--debug',
                         dest='debug',
                         action='store_true',
@@ -275,7 +285,11 @@ def main() -> None:
                                   payload_format=peer_config['format']))
 
     check_peers(peers)
-    changed = save_config(peers, config['output_file'], diff=config.get('output_diff', False))
+    changed = save_config(peers=peers,
+                          filename=config['output_file'],
+                          use_zonefiles=config.get('zonefiles', True),
+                          force_output=args.force,
+                          diff=config.get('output_diff', False))
 
     reconfigure = config.get('reconfigure_command')
     if changed and reconfigure:
