@@ -36,6 +36,7 @@ import re
 import shlex
 import stat
 import subprocess
+import sys
 import xml.etree.cElementTree as ET
 from contextlib import redirect_stdout
 from dataclasses import dataclass
@@ -47,6 +48,7 @@ import requests
 import voluptuous as vol
 import voluptuous.humanize
 import yaml
+from requests.exceptions import ConnectionError
 
 IP_ADDRESS = ipaddress.ip_address
 DOMAIN_NAME = vol.Any(vol.Match(r"\w+"), vol.Match(vol.DOMAIN_REGEX))
@@ -200,7 +202,12 @@ def process_dper(
         except FileNotFoundError:
             pass
 
-        response = None if force_cache else get_unless_modified(source, modified)
+        try:
+            response = None if force_cache else get_unless_modified(source, modified)
+        except ConnectionError as exc:
+            logger.error("Connection to %s failed: %s", peer_id, str(exc))
+            logger.warning("Reverting to cached data for %s", peer_id)
+            response = None
 
         if response is None:
             with open(cache, "rt") as cache_file:
@@ -297,15 +304,20 @@ def main() -> None:
             cache = os.path.join(config.get("cache_dir"), f"{peer_id}.{ext}")
         else:
             cache = None
-        peers.extend(
-            process_dper(
+
+        try:
+            p = process_dper(
                 peer_id=peer_id,
                 source=peer_config["source"],
                 cache=cache,
                 force_cache=args.offline,
                 payload_format=peer_config["format"],
             )
-        )
+        except ConnectionError as exc:
+            logger.error("Connection to %s failed: %s", peer_id, str(exc))
+            sys.exit(-1)
+
+        peers.extend(p)
 
     check_peers(peers)
     changed = save_config(

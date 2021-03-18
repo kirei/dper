@@ -1,0 +1,28 @@
+# PEP 518: https://www.python.org/dev/peps/pep-0518/
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry]
+name = "dper"
+version = "0.0.0"
+description = "DNS Peer Processor"
+authors = ["Jakob Schlyter <jakob@kirei.se>"]
+license = "BSD-2-Clause"
+
+[tool.poetry.scripts]
+dper = "dper:main"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+requests = "^2.25.1"
+voluptuous = "^0.12.1"
+PyYAML = "^5.4.1"
+
+[tool.poetry.dev-dependencies]
+black = "^20.8b1"
+isort = "^5.6.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
