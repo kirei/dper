@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """DPER Processor
 
 Copyright (c) 2020 Kirei AB. All rights reserved.
@@ -55,11 +53,12 @@ DOMAIN_NAME = vol.Any(vol.Match(r"\w+"), vol.Match(vol.DOMAIN_REGEX))
 
 CONFIG_SCHEMA = vol.Schema(
     {
-        vol.Required("output_format"): vol.Any("nsd"),
+        vol.Required("output_format"): vol.Any("nsd", "knot"),
         vol.Required("output_file"): str,
         "output_diff": bool,
         "cache_dir": vol.IsDir,
         "zonefiles": bool,
+        "template": str,
         vol.Required("peers"): vol.Schema(
             {
                 str: vol.Schema(
@@ -174,6 +173,32 @@ def generate_nsd(peers: List[Peer], use_zonefiles: bool = False):
             print("")
 
 
+def generate_knot(peers: List[Peer], template: Optional[str] = None):
+
+    for peer in peers:
+
+        masters = []
+        n = 1
+
+        print("remote:")
+        for m in peer.masters:
+            remote = f"{peer.id}/{n}"
+            n += 1
+            print("  - id:", remote)
+            print("    address:", m.ip)
+            if m.tsig:
+                print("    key:", m.tsig)
+            masters.append(remote)
+
+        print("zone:")
+        for z in peer.zones:
+            print("  - domain:", z)
+            if template:
+                print("    template:", template)
+            masters_list = "[" + ",".join(masters) + "]"
+            print("    master:", masters_list)
+
+
 def get_unless_modified(
     url: str, modified: Optional[datetime]
 ) -> Optional[requests.Response]:
@@ -237,11 +262,14 @@ def save_config(
     use_zonefiles: bool = False,
     force_output: bool = False,
     diff: bool = False,
+    template: Optional[str] = None,
 ) -> bool:
     config_output = io.StringIO()
     with redirect_stdout(config_output):
         if output_format == "nsd":
             generate_nsd(peers, use_zonefiles)
+        elif output_format == "knot":
+            generate_knot(peers, template)
         else:
             raise ValueError("Invalid output format")
     output_file, output_path = mkstemp(prefix="conf.", suffix=".tmp", dir=".")
@@ -323,9 +351,11 @@ def main() -> None:
     changed = save_config(
         peers=peers,
         filename=config["output_file"],
+        output_format=config["output_format"],
         use_zonefiles=config.get("zonefiles", True),
         force_output=args.force,
         diff=config.get("output_diff", False),
+        template=config.get("template"),
     )
 
     reconfigure = config.get("reconfigure_command")
