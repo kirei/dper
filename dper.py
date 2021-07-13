@@ -59,6 +59,7 @@ CONFIG_SCHEMA = vol.Schema(
         "cache_dir": vol.IsDir,
         "zonefiles": bool,
         "template": str,
+        "acl": str,
         vol.Required("peers"): vol.Schema(
             {
                 str: vol.Schema(
@@ -173,13 +174,15 @@ def generate_nsd(peers: List[Peer], use_zonefiles: bool = False):
             print("")
 
 
-def generate_knot(peers: List[Peer], template: Optional[str] = None):
+def generate_knot(
+    peers: List[Peer], template: Optional[str] = None, acl: Optional[str] = None
+):
 
     for peer in peers:
 
         masters = []
+        acls = [acl] if acl else []
         n = 1
-
         print("remote:")
         for m in peer.masters:
             remote = f"{peer.id}/{n}"
@@ -190,13 +193,20 @@ def generate_knot(peers: List[Peer], template: Optional[str] = None):
                 print("    key:", m.tsig)
             masters.append(remote)
 
+        print("acl:")
+        for m in masters:
+            print("  - id:", m)
+            print("    remote:", m)
+            print("    action: [notify,transfer]")
+            acls.append(remote)
+
         print("zone:")
         for z in peer.zones:
             print("  - domain:", z)
             if template:
                 print("    template:", template)
-            masters_list = "[" + ",".join(masters) + "]"
-            print("    master:", masters_list)
+            print("    master:", "[" + ",".join(masters) + "]")
+            print("    acl:", "[" + ",".join(acls) + "]")
 
 
 def get_unless_modified(
@@ -263,13 +273,14 @@ def save_config(
     force_output: bool = False,
     diff: bool = False,
     template: Optional[str] = None,
+    acl: Optional[str] = None,
 ) -> bool:
     config_output = io.StringIO()
     with redirect_stdout(config_output):
         if output_format == "nsd":
             generate_nsd(peers, use_zonefiles)
         elif output_format == "knot":
-            generate_knot(peers, template)
+            generate_knot(peers, template, acl)
         else:
             raise ValueError("Invalid output format")
     output_file, output_path = mkstemp(prefix="conf.", suffix=".tmp", dir=".")
@@ -356,6 +367,7 @@ def main() -> None:
         force_output=args.force,
         diff=config.get("output_diff", False),
         template=config.get("template"),
+        acl=config.get("acl"),
     )
 
     reconfigure = config.get("reconfigure_command")
